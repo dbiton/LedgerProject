@@ -8,12 +8,15 @@ import io.grpc.ManagedChannelBuilder;
 
 public class LedgerServiceClient {
     private final int shard;
-    private final LedgerServiceGrpc.LedgerServiceBlockingStub stub;
+    private final String host;
+    private final int port;
+
+    private LedgerServiceGrpc.LedgerServiceBlockingStub stub = null;
 
     public LedgerServiceClient(int shard, String host, int port){
         this.shard = shard;
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).build();
-        this.stub = LedgerServiceGrpc.newBlockingStub(channel);
+        this.host = host;
+        this.port = port;
     }
 
     public int getShard(){
@@ -21,6 +24,10 @@ public class LedgerServiceClient {
     }
 
     public LedgerServiceGrpc.LedgerServiceBlockingStub getStub(){
-        return this.stub;
+        if (stub == null){
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).build();
+            stub = LedgerServiceGrpc.newBlockingStub(channel);
+        }
+        return stub;
     }
 }
