@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "ledger/ledger_messages.proto";
+
+option java_multiple_files = true;
+option java_package = "cs236351.ledger";
+
+package cs236351.ledger;
+
+service LedgerService {
+  // client to server communication
+  rpc SubmitTransaction(Transaction) returns (Res) {}
+  rpc GetUTxOs(uint128) returns (stream UTxO) {}
+  rpc GetTransactions(AddressAndMax) returns (stream Transaction) {}
+  rpc GetAllTransactions(Max) returns (stream Transaction) {}
+
+  // server to server communication
+  rpc GetTransferCoins(Transfer) returns (Coins) {}
+  rpc SubmitTransfer(TransferAndTransactionID) returns (google.protobuf.Empty) {}
+}

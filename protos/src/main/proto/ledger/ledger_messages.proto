@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cs236351.ledger";
+
+package cs236351.ledger;
+
+enum ResCode {
+  SUCCESS = 0;
+  FAILURE = 1;
+}
+
+message Res{
+  ResCode res = 1;
+}
+
+message uint128 {
+  uint64 low = 1;
+  uint64 high = 2;
+}
+
+message Coins {
+  uint64 coins = 1;
+}
+
+message Transfer {
+  uint128 address = 1;
+  Coins coins = 2;
+}
+
+message TransferAndTransactionID{
+  uint128 transaction_id = 1;
+  Transfer transfer = 2;
+}
+
+message Max{
+  uint64 max = 1;
+}
+
+message AddressAndMax{
+  uint128 address = 1;
+  uint64 max = 2;
+}
+
+message UTxO {
+  uint128 transaction_id = 1;
+  uint128 address = 2;
+}
+
+message Transaction {
+  uint128 id = 1;
+  repeated UTxO inputs = 2;
+  repeated Transfer outputs = 3;
+}
