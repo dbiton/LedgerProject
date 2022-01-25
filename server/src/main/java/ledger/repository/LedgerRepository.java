@@ -57,7 +57,7 @@ public class LedgerRepository {
         return us;
     }
 
-    public ArrayList<Transaction> getTransactions(long max) {
+    public ArrayList<Transaction> getAllTransactions(long max) {
         ArrayList<Transaction> transactions = new ArrayList<>();
         long counter = 0;
         for (Transaction transaction : this.transactions) {

@@ -37,12 +37,12 @@ public class proto {
         cs236351.ledger.Transaction.Builder builder = cs236351.ledger.Transaction.newBuilder().setId(id);
         int n = 0;
         for (ledger.repository.model.UTxO u : transaction.getInputs()){
-            builder.setInputs(n, toMessage(u));
+            builder.addInputs(n, toMessage(u));
             n += 1;
         }
         n = 0;
         for (ledger.repository.model.Transfer t : transaction.getOutputs()){
-            builder.setOutputs(n, toMessage(t));
+            builder.addOutputs(n, toMessage(t));
             n += 1;
         }
         return builder.build();

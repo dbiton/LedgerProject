@@ -18,7 +18,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        int num_shards = 2;
+        int num_shards = 4;
         List<Integer> ports = Arrays.asList(6666, 7777, 8888, 9999);
         List<LedgerServer> servers = new ArrayList<>();
         String localhost = "localhost";
@@ -28,13 +28,22 @@ public class Main {
             List<LedgerServiceClient> other_servers = new ArrayList<>();
             for (int j=0; j<ports.size(); j++){
                 if (i != j){
-                    int other_port = ports.get(i);
+                    int other_port = ports.get(j);
                     int other_shard = serverIndexToShard(j, num_shards);
                     other_servers.add(new LedgerServiceClient(other_shard, localhost, other_port));
                 }
             }
-            LedgerServer server = new LedgerServer(server_port, server_shard, other_servers);
+            LedgerServer server = new LedgerServer(server_port, server_shard, num_shards, other_servers);
             servers.add(server);
+        }
+
+        for (LedgerServer server : servers){
+            try {
+                server.start();
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
         }
 
         LedgerController client = new LedgerController(BigInteger.ZERO, localhost, ports.get(0));
@@ -43,5 +52,6 @@ public class Main {
         List<Transfer> outputs = Arrays.asList(new Transfer(BigInteger.ONE, 32), new Transfer(BigInteger.TEN, 64), new Transfer(BigInteger.TWO, 128));
         Transaction transaction = new Transaction(BigInteger.ZERO, inputs, outputs);
         client.submitTransaction(transaction);
+        List<UTxO> us = client.getUTxOs(BigInteger.ONE);
     }
 }

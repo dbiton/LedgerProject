@@ -34,12 +34,12 @@ message TransferAndTransactionID{
 }
 
 message Max{
-  uint64 max = 1;
+  int32 max = 1;
 }
 
 message AddressAndMax{
   uint128 address = 1;
-  uint64 max = 2;
+  int32 max = 2;
 }
 
 message UTxO {

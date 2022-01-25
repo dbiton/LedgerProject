@@ -25,7 +25,7 @@ public class LedgerServiceClient {
 
     public LedgerServiceGrpc.LedgerServiceBlockingStub getStub(){
         if (stub == null){
-            ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).build();
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
             stub = LedgerServiceGrpc.newBlockingStub(channel);
         }
         return stub;
