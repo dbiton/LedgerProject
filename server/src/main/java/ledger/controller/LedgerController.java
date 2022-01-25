@@ -6,9 +6,7 @@ import cs236351.ledger.ResCode;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import ledger.repository.model.Transaction;
-import ledger.repository.model.Transfer;
 import ledger.repository.model.UTxO;
-import ledger.service.LedgerService;
 import ledger.util.proto;
 
 import java.math.BigInteger;

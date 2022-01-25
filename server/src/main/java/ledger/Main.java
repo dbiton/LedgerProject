@@ -1,7 +1,9 @@
-package ledger.repository;
+package ledger;
 
 import ledger.controller.LedgerController;
 import ledger.repository.model.Transaction;
+import ledger.repository.model.Transfer;
+import ledger.repository.model.UTxO;
 import ledger.service.LedgerServer;
 import ledger.service.LedgerServiceClient;
 
@@ -36,5 +38,10 @@ public class Main {
         }
 
         LedgerController client = new LedgerController(BigInteger.ZERO, localhost, ports.get(0));
+
+        List<UTxO> inputs = List.of(new UTxO(BigInteger.ZERO, BigInteger.ZERO));
+        List<Transfer> outputs = Arrays.asList(new Transfer(BigInteger.ONE, 32), new Transfer(BigInteger.TEN, 64), new Transfer(BigInteger.TWO, 128));
+        Transaction transaction = new Transaction(BigInteger.ZERO, inputs, outputs);
+        client.submitTransaction(transaction);
     }
 }
