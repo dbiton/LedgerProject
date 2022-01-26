@@ -5,8 +5,6 @@ import com.google.protobuf.kotlin.toByteStringUtf8
 import io.grpc.ManagedChannelBuilder
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.*
-import zookeeper.kotlin.CreateOperation
-import zookeeper.kotlin.GetChildrenOperation
 
 val biSerializer = object : ByteStringBiSerializer<String> {
     override fun serialize(obj: String) = obj.toByteStringUtf8()

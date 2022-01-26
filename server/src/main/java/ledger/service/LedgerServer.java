@@ -16,21 +16,24 @@ public class LedgerServer {
     Server server;
     Manager zk;
 
-    public LedgerServer(int port, int shard, int num_shards, String host, List<LedgerServiceClient> other_servers)
+    public LedgerServer(String host, int port, int shard, int num_shards,
+                        String zookeeper_host, List<LedgerServiceClient> other_servers)
             throws IOException, InterruptedException {
-        this(ServerBuilder.forPort(port), port, shard, num_shards, host, other_servers);
+        this(ServerBuilder.forPort(port),host, port, shard, num_shards, zookeeper_host, other_servers);
     }
 
-    public LedgerServer(ServerBuilder<?> serverBuilder, int port, int shard, int num_shards, String host,
-                        List<LedgerServiceClient> other_servers) throws IOException, InterruptedException {
+    public LedgerServer(ServerBuilder<?> serverBuilder, String host, int port, int shard, int num_shards,
+                        String zookeeper_host, List<LedgerServiceClient> other_servers) throws IOException, InterruptedException {
         this.port = port;
         zookeeper.Connection connection = new Connection();
-        Manager zk = new ManagerImpl(host);
+        Manager zk = new ManagerImpl(zookeeper_host);
         LedgerService service = new LedgerService();
         service.setShard(shard);
         service.setServers(other_servers);
         service.setNumShards(num_shards);
         service.setZooKeeper(zk);
+        service.setPort(port);
+        service.setHost(host);
         server = serverBuilder.addService(service)
                 .build();
     }

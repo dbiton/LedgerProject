@@ -56,7 +56,7 @@ public class Main {
                 }
             }
             try {
-                LedgerServer server = new LedgerServer(server_port, server_shard, num_shards, zookeeper_host, other_servers);
+                LedgerServer server = new LedgerServer(localhost, server_port, server_shard, num_shards, zookeeper_host, other_servers);
                 servers.add(server);
             }
             catch (Exception e){

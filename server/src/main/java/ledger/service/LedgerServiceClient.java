@@ -30,4 +30,12 @@ public class LedgerServiceClient {
         }
         return stub;
     }
+
+    public int getPort(){
+        return port;
+    }
+
+    public String getHost(){
+        return host;
+    }
 }

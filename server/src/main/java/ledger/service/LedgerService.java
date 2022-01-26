@@ -4,7 +4,6 @@ import com.google.protobuf.Empty;
 import cs236351.ledger.*;
 import ledger.repository.LedgerRepository;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
@@ -16,28 +15,33 @@ import zookeeper.Manager;
 
 public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     LedgerRepository repository = new LedgerRepository();
+
+    // constants
     int shard;
     int num_shards;
+    int port;
+    String host;
     Manager zk;
     List<LedgerServiceClient> other_servers;
+
+    // variables
+    boolean is_leader = false;
+    LedgerServiceClient leader = null; // null if is_leader==true
+
 
     @Override
     public void submitTransaction(cs236351.ledger.Transaction request,
                                   io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
-        BigInteger tid = generateTransactionID();
-        System.out.println("generated tid: " + tid);
-
         ledger.repository.model.Transaction transaction = proto.fromMessage(request);
-        int shard_responsible = getShardResponsibleFor(transaction.getId());
-        if (shard_responsible != this.shard){
-            Res res = getClientForShard(shard_responsible).getStub().submitTransaction(request);
+        LedgerServiceClient client = getClientResponsibleFor(transaction.getId());
+        if (client != null){
+            Res res = client.getStub().submitTransaction(request);
             responseObserver.onNext(res);
             responseObserver.onCompleted();
         }
         // this shard is responsible
         else{
             // TODO: check everything is legal here...
-
             // transfer coins
             BigInteger transaction_id = transaction.getId();
             for (ledger.repository.model.Transfer transfer : transaction.getOutputs()) {
@@ -64,9 +68,9 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     public void getUTxOs(cs236351.ledger.uint128 request,
                          io.grpc.stub.StreamObserver<cs236351.ledger.UTxO> responseObserver) {
         BigInteger id = proto.toBigInteger(request);
-        int shard_responsible = getShardResponsibleFor(id);
-        if (shard_responsible != this.shard){
-            Iterator<UTxO> it = getClientForShard(shard_responsible).getStub().getUTxOs(proto.toUint128(id));
+        LedgerServiceClient client = getClientResponsibleFor(id);
+        if (client != null){
+            Iterator<UTxO> it = client.getStub().getUTxOs(request);
             while(it.hasNext()){
                 responseObserver.onNext(it.next());
             }
@@ -135,6 +139,14 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         this.zk = zk;
     }
 
+    public void setPort(int port){
+        this.port = port;
+    }
+
+    public void setHost(String host){
+        this.host = host;
+    }
+
     public void setShard(int shard){
         this.shard = shard;
     }
@@ -149,6 +161,29 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
 
     private int getShardResponsibleFor(BigInteger address){
         return address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
+    }
+
+    private LedgerServiceClient getClientResponsibleFor(BigInteger address){
+        int shard_responsible = address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
+        if (shard_responsible == this.shard){
+            // leader not initialized
+            if (!is_leader && leader==null){
+                for (int i = 0; i<32; i++) {
+                    try {
+                        leader = getLeader();
+                        is_leader = (leader == null);
+                        break;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return leader;
+        }
+        else {
+            // we should probably check who is alive first, maybe try all of them one by one...
+            return getClientForShard(shard_responsible);
+        }
     }
 
     private BigInteger generateTransactionID(){
@@ -170,6 +205,54 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             e.printStackTrace();
         }
         return max;
+    }
+
+    private LedgerServiceClient getLeader() throws InterruptedException, KeeperException {
+        String leader_address = null;
+        String shared_str = String.valueOf(this.shard);
+        List<String> timestamps = zk.getChildren("/leader/" + shared_str);
+        long ts_min = Long.MAX_VALUE;
+        for (String t : timestamps) {
+            String[] strings = t.split("-");
+            String address = strings[0];
+            long ts = Long.parseLong(strings[1]);
+            if (ts < ts_min){
+                ts_min = ts;
+                leader_address = address;
+            }
+        }
+
+        if (leader_address == null){
+            throw new NoSuchElementException("leader not found in clients!");
+        }
+
+        String[] leader_data = leader_address.split(":");
+        String leader_host = leader_data[0];
+        int leader_port = Integer.parseInt(leader_data[1]);
+
+        // this server is the leader!
+        if (leader_host.equals(this.host) && leader_port == this.port){
+            return null;
+        }
+
+        for (LedgerServiceClient client : other_servers){
+            if (client.getHost().equals(leader_host) && client.getPort() == leader_port){
+                return client;
+            }
+        }
+
+        throw new NoSuchElementException("leader not found in clients!");
+    }
+
+    private void electLeader(){
+        try {
+            String shard_str = String.valueOf(this.shard);
+            String port_str = String.valueOf(this.port);
+            zk.create("/leader/" + shard_str+ "/" + this.host + ":" + port_str +"-",
+                    null, CreateMode.EPHEMERAL_SEQUENTIAL);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private LedgerServiceClient getClientForShard(int shard){

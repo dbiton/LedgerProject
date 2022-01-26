@@ -2,6 +2,7 @@ package zookeeper;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
 
 import java.util.List;
 
@@ -14,5 +15,7 @@ public interface Manager {
     public void update(String path, byte[] data)
             throws KeeperException, InterruptedException;
     public List<String> getChildren(final String path)
+            throws InterruptedException, KeeperException;
+    public List<String> getChildren(final String path, Watcher watcher)
             throws InterruptedException, KeeperException;
 }

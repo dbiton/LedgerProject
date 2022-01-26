@@ -1,9 +1,6 @@
 package zookeeper;
 
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -62,6 +59,10 @@ public class ManagerImpl implements Manager {
     }
 
     public List<String> getChildren(final String path) throws InterruptedException, KeeperException {
-        return zkeeper.getChildren(path, null);
+        return getChildren(path, null);
+    }
+
+    public List<String> getChildren(final String path, Watcher watcher) throws InterruptedException, KeeperException {
+        return zkeeper.getChildren(path, watcher);
     }
 }
