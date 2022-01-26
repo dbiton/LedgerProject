@@ -10,16 +10,23 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import ledger.util.proto;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import zookeeper.Manager;
 
 public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     LedgerRepository repository = new LedgerRepository();
     int shard;
     int num_shards;
+    Manager zk;
     List<LedgerServiceClient> other_servers;
 
     @Override
     public void submitTransaction(cs236351.ledger.Transaction request,
                                   io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
+        BigInteger tid = generateTransactionID();
+        System.out.println("generated tid: " + tid);
+
         ledger.repository.model.Transaction transaction = proto.fromMessage(request);
         int shard_responsible = getShardResponsibleFor(transaction.getId());
         if (shard_responsible != this.shard){
@@ -124,6 +131,10 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         responseObserver.onCompleted();
     }
 
+    public void setZooKeeper(Manager zk){
+        this.zk = zk;
+    }
+
     public void setShard(int shard){
         this.shard = shard;
     }
@@ -138,6 +149,27 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
 
     private int getShardResponsibleFor(BigInteger address){
         return address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
+    }
+
+    private BigInteger generateTransactionID(){
+        BigInteger max = null;
+        try {
+            String shard_str = String.valueOf(this.shard);
+            zk.create("/transactions/" + shard_str+"-", null, CreateMode.EPHEMERAL_SEQUENTIAL);
+            List<String> timestamps = zk.getChildren("/transactions");
+            for (String t : timestamps){
+                if (t.startsWith(shard_str)){
+                    String ts = t.substring(shard_str.length()+1);
+                    BigInteger n = new BigInteger(ts);
+                    if (max == null || max.compareTo(n) < 0){
+                        max = n;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return max;
     }
 
     private LedgerServiceClient getClientForShard(int shard){

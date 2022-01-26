@@ -3,6 +3,9 @@ package ledger.service;
 import cs236351.ledger.Ledger;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import zookeeper.Connection;
+import zookeeper.Manager;
+import zookeeper.ManagerImpl;
 
 import java.io.IOException;
 import java.util.List;
@@ -11,17 +14,23 @@ import java.util.concurrent.TimeUnit;
 public class LedgerServer {
     int port;
     Server server;
+    Manager zk;
 
-    public LedgerServer(int port, int shard, int num_shards, List<LedgerServiceClient> other_servers){
-        this(ServerBuilder.forPort(port), port, shard, num_shards, other_servers);
+    public LedgerServer(int port, int shard, int num_shards, String host, List<LedgerServiceClient> other_servers)
+            throws IOException, InterruptedException {
+        this(ServerBuilder.forPort(port), port, shard, num_shards, host, other_servers);
     }
 
-    public LedgerServer(ServerBuilder<?> serverBuilder, int port, int shard, int num_shards, List<LedgerServiceClient> other_servers){
+    public LedgerServer(ServerBuilder<?> serverBuilder, int port, int shard, int num_shards, String host,
+                        List<LedgerServiceClient> other_servers) throws IOException, InterruptedException {
         this.port = port;
+        zookeeper.Connection connection = new Connection();
+        Manager zk = new ManagerImpl(host);
         LedgerService service = new LedgerService();
         service.setShard(shard);
         service.setServers(other_servers);
         service.setNumShards(num_shards);
+        service.setZooKeeper(zk);
         server = serverBuilder.addService(service)
                 .build();
     }
