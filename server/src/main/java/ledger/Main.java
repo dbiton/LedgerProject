@@ -23,7 +23,7 @@ import zookeeper.ManagerImpl;
 
 public class Main {
     final static List<Integer> zookeeper_ports = Arrays.asList(2181, 2182, 2183);
-    final static List<Integer> server_ports = Arrays.asList(6666, 7777, 8888, 9999);
+    final static List<Integer> server_ports = Arrays.asList(6666, 7777, 8888, 9999, 2222, 3453, 12345, 2343);
 
     static int serverIndexToShard(int server_index, int num_shards){
         return server_index%num_shards;
@@ -41,7 +41,7 @@ public class Main {
     public static void main(String[] args) {
         String zookeeper_host = getHostZookeeper();
 
-        int num_shards = 4;
+        int num_shards = 3;
         List<LedgerServer> servers = new ArrayList<>();
         String localhost = "localhost";
         for (int i=0; i<server_ports.size(); i++){

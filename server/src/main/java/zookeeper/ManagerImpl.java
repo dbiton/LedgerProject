@@ -65,4 +65,8 @@ public class ManagerImpl implements Manager {
     public List<String> getChildren(final String path, Watcher watcher) throws InterruptedException, KeeperException {
         return zkeeper.getChildren(path, watcher);
     }
+
+    public boolean exists(final String path) throws InterruptedException, KeeperException {
+        return zkeeper.exists(path, null) != null;
+    }
 }

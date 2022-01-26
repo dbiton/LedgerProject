@@ -18,4 +18,5 @@ public interface Manager {
             throws InterruptedException, KeeperException;
     public List<String> getChildren(final String path, Watcher watcher)
             throws InterruptedException, KeeperException;
+    public boolean exists(final String path) throws InterruptedException, KeeperException;
 }

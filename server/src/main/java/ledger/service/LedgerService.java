@@ -170,6 +170,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             if (!is_leader && leader==null){
                 for (int i = 0; i<32; i++) {
                     try {
+                        electLeader();
                         leader = getLeader();
                         is_leader = (leader == null);
                         break;
@@ -210,7 +211,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     private LedgerServiceClient getLeader() throws InterruptedException, KeeperException {
         String leader_address = null;
         String shared_str = String.valueOf(this.shard);
-        List<String> timestamps = zk.getChildren("/leader/" + shared_str);
+        List<String> timestamps = zk.getChildren("/leaders/" + shared_str);
         long ts_min = Long.MAX_VALUE;
         for (String t : timestamps) {
             String[] strings = t.split("-");
@@ -248,7 +249,10 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         try {
             String shard_str = String.valueOf(this.shard);
             String port_str = String.valueOf(this.port);
-            zk.create("/leader/" + shard_str+ "/" + this.host + ":" + port_str +"-",
+            if (!zk.exists("/leaders/" + shard_str)){
+                zk.create("/leaders/" + shard_str, null, CreateMode.PERSISTENT);
+            }
+            zk.create("/leaders/" + shard_str+ "/" + this.host + ":" + port_str +"-",
                     null, CreateMode.EPHEMERAL_SEQUENTIAL);
         } catch (Exception e) {
             e.printStackTrace();
