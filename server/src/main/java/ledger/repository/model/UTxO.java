@@ -37,4 +37,13 @@ public class UTxO {
     public void getTransaction_id(BigInteger transaction_id){
         this.transaction_id = transaction_id;
     }
+
+    @Override
+    public String toString() {
+        return "UTxO{" +
+                "transaction_id=" + transaction_id +
+                ", address=" + address +
+                ", coins=" + coins +
+                '}';
+    }
 }

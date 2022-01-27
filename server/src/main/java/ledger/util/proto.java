@@ -20,6 +20,15 @@ public class proto {
         return uint128.newBuilder().setLow(n.longValue()).setHigh(n.shiftRight(64).longValue()).build();
     }
 
+    public static cs236351.ledger.AddressesAndAmount toMessage(BigInteger address_from, BigInteger address_to, long amount)
+    {
+        return cs236351.ledger.AddressesAndAmount.newBuilder()
+                .setAddressFrom(toUint128(address_from))
+                .setAddressTo(toUint128(address_to))
+                .setAmount(amount)
+                .build();
+    }
+
     public static AddressAndMax toMessage(BigInteger address, int max){
         return AddressAndMax.newBuilder()
                 .setAddress(toUint128(address))

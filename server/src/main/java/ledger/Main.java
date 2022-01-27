@@ -79,18 +79,23 @@ public class Main {
         List<UTxO> inputs = List.of(new UTxO(BigInteger.ZERO, BigInteger.ZERO));
         List<Transfer> outputs = Arrays.asList(new Transfer(BigInteger.ONE, 32), new Transfer(BigInteger.TEN, 64), new Transfer(BigInteger.TWO, 128));
         Transaction transaction = new Transaction(BigInteger.ZERO, inputs, outputs);
-        client.submitTransaction(transaction);
-        transaction.setId(BigInteger.ONE);
-        client.submitTransaction(transaction);
-        transaction.setId(BigInteger.TEN);
-        client.submitTransaction(transaction);
-        client.submitTransaction(transaction);
-        transaction.setId(BigInteger.ONE);
-        client.submitTransaction(transaction);
-        transaction.setId(BigInteger.TWO);
-        client.submitTransaction(transaction);
-        transaction.setId(BigInteger.TEN);
-        client.submitTransaction(transaction);
-        List<UTxO> us = client.getUTxOs(BigInteger.ONE);
+
+        client.sendCoins(BigInteger.ONE, 1232);
+        client.sendCoins(BigInteger.TWO, 1234);
+        client.sendCoins(BigInteger.TWO, 234);
+        client.sendCoins(BigInteger.TWO, 2134);
+        client.sendCoins(BigInteger.TEN, 23512);
+        client.sendCoins(BigInteger.TEN, 34432);
+        client.sendCoins(BigInteger.TEN, 3424123);
+        client.sendCoins(BigInteger.TEN, 33224);
+        client.sendCoins(BigInteger.TWO, 32322);
+        client.sendCoins(BigInteger.TEN, 123);
+        client.sendCoins(BigInteger.ONE, 1231);
+
+        List<UTxO> us = client.getUTxOs(BigInteger.ZERO);
+        List<Transaction> ts = client.getAllTransactions(32);
+
+        System.out.println(Arrays.toString(us.toArray()));
+        System.out.println(Arrays.toString(ts.toArray()));
     }
 }

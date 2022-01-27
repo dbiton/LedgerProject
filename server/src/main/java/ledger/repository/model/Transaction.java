@@ -58,4 +58,13 @@ public class Transaction {
     public BigInteger getInputAddress(){
         return inputs.get(0).address;
     }
+
+    @Override
+    public String toString() {
+        return "Transaction{" +
+                "id=" + id +
+                ", inputs=" + Arrays.toString(inputs.toArray()) +
+                ", outputs=" + Arrays.toString(outputs.toArray()) +
+                '}';
+    }
 }

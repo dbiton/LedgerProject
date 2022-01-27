@@ -61,11 +61,11 @@ public class LedgerRepository {
         ArrayList<Transaction> transactions = new ArrayList<>();
         long counter = 0;
         for (Transaction transaction : this.transactions) {
-            transactions.add(transaction);
-            counter += 1;
-            if (max > 0 && counter == max) {
+            if (counter >= max) {
                 break;
             }
+            transactions.add(transaction);
+            counter += 1;
         }
         return transactions;
     }
@@ -75,11 +75,11 @@ public class LedgerRepository {
         long counter = 0;
         for (Transaction transaction : this.transactions) {
             if (transaction.getInputAddress().equals(address)) {
-                transactions.add(transaction);
-                counter += 1;
-                if (max > 0 && counter == max) {
+                if (counter >= max) {
                     break;
                 }
+                transactions.add(transaction);
+                counter += 1;
             }
         }
         return transactions;

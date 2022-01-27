@@ -86,12 +86,39 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
 
     @Override
     public StreamObserver<Transaction> submitTransactions(StreamObserver<Res> responseObserver) {
-        return super.submitTransactions(responseObserver);
-    }
+        return new StreamObserver<Transaction>() {
+            List<Transaction> transactions = new ArrayList<Transaction>();
+            @Override
+            public void onNext(Transaction transaction){
+                transactions.add(transaction);
+            }
 
-    @Override
-    public StreamObserver<Transaction> submitTransactionsInternal(StreamObserver<Res> responseObserver) {
-        return super.submitTransactions(responseObserver);
+            @Override
+            public void onError(Throwable t) {
+                System.out.println("Error while reading transaction stream: " + t);
+            }
+
+            private boolean isIndependent(List<Transaction> transactions){
+                return true;
+            }
+
+            @Override
+            public void onCompleted() {
+                if (isIndependent(transactions)){
+                    for (Transaction transaction : transactions){
+                        BigInteger address_sender = proto.fromMessage(transaction).getInputAddress();
+                        LedgerServiceClient client = getLeaderResponsibleForAddress(address_sender);
+                        if (client == null){
+                            // we are responsible for the commit
+                        }
+                        else{
+                            client.getStub().submitTransaction(transaction);
+                        }
+                    }
+                }
+                responseObserver.onCompleted();
+            }
+        };
     }
 
     @Override
@@ -104,6 +131,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             Res res = client.getStub().sendCoins(request);
             responseObserver.onNext(res);
             responseObserver.onCompleted();
+            return;
         }
         BigInteger address_to = proto.toBigInteger(request.getAddressTo());
         long amount = request.getAmount();
@@ -120,7 +148,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         outputs.add(transfer_coins);
 
         BigInteger transaction_id = generateTransactionID();
-        LedgerServiceClient client_recv = getLeaderResponsibleForAddress(address_from);
+        LedgerServiceClient client_recv = getLeaderResponsibleForAddress(address_to);
         // we are also responsible for address_to
         if (client_recv == null){
             repository.submitTransfer(transfer_coins, transaction_id);
@@ -139,7 +167,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         }
         long change = amount_input - amount;
         if (change > 0){
-            ledger.repository.model.Transfer transfer_change = new ledger.repository.model.Transfer(address_to, amount);
+            ledger.repository.model.Transfer transfer_change = new ledger.repository.model.Transfer(address_from, change);
             outputs.add(transfer_change);
             repository.submitTransfer(transfer_change, transaction_id);
             // followers copy the leader...
@@ -149,11 +177,13 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         }
         ledger.repository.model.Transaction transaction =
                 new ledger.repository.model.Transaction(transaction_id, inputs, outputs);
-
+        repository.submitTransaction(transaction);
         // followers copy the leader...
         for (LedgerServiceClient follower : shard_clients){
             follower.getStub().submitTransactionInternal(proto.toMessage(transaction));
         }
+        responseObserver.onNext(Res.newBuilder().setRes(ResCode.SUCCESS).build());
+        responseObserver.onCompleted();
     }
 
     @Override
@@ -297,6 +327,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             leader_order = getLeaderOrder();
         }
         while (leader_order.isEmpty()) {
+            System.out.println("Checking leader order...");
             leader_order = getLeaderOrder();
         }
         return leader_order.get(0);
@@ -423,5 +454,11 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
                 return proto.toBigInteger(t0.getId()).compareTo(proto.toBigInteger(t1.getId()));
             }
         });
+    }
+
+    public void submitGenesis(){
+        ledger.repository.model.Transfer transfer_genesis =
+                new ledger.repository.model.Transfer(BigInteger.ZERO, Long.MAX_VALUE);
+        repository.submitTransfer(transfer_genesis, BigInteger.ZERO);
     }
 }

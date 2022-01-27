@@ -26,4 +26,12 @@ public class Transfer {
     public long getCoins(){
         return coins;
     }
+
+    @Override
+    public String toString() {
+        return "Transfer{" +
+                "address=" + address +
+                ", coins=" + coins +
+                '}';
+    }
 }

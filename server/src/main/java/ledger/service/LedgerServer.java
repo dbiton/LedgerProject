@@ -33,6 +33,9 @@ public class LedgerServer {
         service.setZooKeeper(zk);
         service.setPort(port);
         service.setHost(host);
+        if (shard == 0){
+            service.submitGenesis();
+        }
         server = serverBuilder.addService(service)
                 .build();
     }
