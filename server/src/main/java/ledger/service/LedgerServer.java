@@ -28,8 +28,7 @@ public class LedgerServer {
         zookeeper.Connection connection = new Connection();
         Manager zk = new ManagerImpl(zookeeper_host);
         LedgerService service = new LedgerService();
-        service.setShard(shard);
-        service.setServers(other_servers);
+        service.setServers(shard, other_servers);
         service.setNumShards(num_shards);
         service.setZooKeeper(zk);
         service.setPort(port);

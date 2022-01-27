@@ -3,6 +3,7 @@ package ledger.service;
 import cs236351.ledger.LedgerServiceGrpc;
 import cs236351.ledger.Transfer;
 import io.grpc.Channel;
+import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
@@ -10,6 +11,7 @@ public class LedgerServiceClient {
     private final int shard;
     private final String host;
     private final int port;
+    private ManagedChannel channel;
 
     private LedgerServiceGrpc.LedgerServiceBlockingStub stub = null;
 
@@ -25,7 +27,7 @@ public class LedgerServiceClient {
 
     public LedgerServiceGrpc.LedgerServiceBlockingStub getStub(){
         if (stub == null){
-            ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
+            this.channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
             stub = LedgerServiceGrpc.newBlockingStub(channel);
         }
         return stub;
@@ -37,5 +39,9 @@ public class LedgerServiceClient {
 
     public String getHost(){
         return host;
+    }
+
+    public boolean isAlive() {
+       return channel.isTerminated() || channel.isShutdown();
     }
 }

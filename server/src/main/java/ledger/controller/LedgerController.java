@@ -1,8 +1,6 @@
 package ledger.controller;
 
-import cs236351.ledger.LedgerServiceGrpc;
-import cs236351.ledger.Res;
-import cs236351.ledger.ResCode;
+import cs236351.ledger.*;
 import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -25,9 +23,21 @@ public class LedgerController {
         this.stub = LedgerServiceGrpc.newBlockingStub(channel);
     }
 
+    public boolean sendCoins(BigInteger address, long amount){
+        //Res res = stub.sendCoins(address, amount);
+        //return res.getRes().equals(ResCode.SUCCESS);
+        return false;
+    }
+
     public boolean submitTransaction(Transaction transaction) {
         Res res = stub.submitTransaction(proto.toMessage(transaction));
         return res.getRes().equals(ResCode.SUCCESS);
+    }
+
+    public boolean submitTransactions(List<Transaction> transactions) {
+        //Res res = stub.submitTransactions(transactions);
+        //return res.getRes().equals(ResCode.SUCCESS);
+        return false;
     }
 
     public List<UTxO> getUTxOs(BigInteger address){
@@ -35,7 +45,6 @@ public class LedgerController {
             Iterator<cs236351.ledger.UTxO> it = stub.getUTxOs(proto.toUint128(address));
             List<UTxO> res = new ArrayList<>();
             while (it.hasNext()) {
-                System.out.println("sending for next");
                 res.add(proto.fromMessage(it.next()));
             }
             return res;
@@ -47,10 +56,30 @@ public class LedgerController {
     }
 
     public List<Transaction> getTransactions(BigInteger address, int max) {
-        return new ArrayList<>();
+        try {
+            Iterator<cs236351.ledger.Transaction> it = stub.getTransactions(proto.toMessage(address, max));
+            List<Transaction> res = new ArrayList<>();
+            while (it.hasNext()) {
+                res.add(proto.fromMessage(it.next()));
+            }
+            return res;
+        }
+        catch (StatusRuntimeException e){
+            return new ArrayList<>();
+        }
     }
 
     public List<Transaction> getAllTransactions(int max){
-        return new ArrayList<>();
+        try {
+            Iterator<cs236351.ledger.Transaction> it = stub.getAllTransactions(Max.newBuilder().setMax(max).build());
+            List<Transaction> res = new ArrayList<>();
+            while (it.hasNext()) {
+                res.add(proto.fromMessage(it.next()));
+            }
+            return res;
+        }
+        catch (StatusRuntimeException e){
+            return new ArrayList<>();
+        }
     }
 }

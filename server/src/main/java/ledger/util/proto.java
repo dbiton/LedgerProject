@@ -1,5 +1,6 @@
 package ledger.util;
 
+import cs236351.ledger.AddressAndMax;
 import cs236351.ledger.Transfer;
 import cs236351.ledger.uint128;
 import ledger.repository.model.Transaction;
@@ -16,6 +17,13 @@ public class proto {
 
     public static cs236351.ledger.uint128 toUint128(BigInteger n){
         return uint128.newBuilder().setLow(n.longValue()).setHigh(n.shiftRight(64).longValue()).build();
+    }
+
+    public static AddressAndMax toMessage(BigInteger address, int max){
+        return AddressAndMax.newBuilder()
+                .setAddress(toUint128(address))
+                .setMax(max)
+                .build();
     }
 
     public static cs236351.ledger.Transfer toMessage(ledger.repository.model.Transfer transfer){

@@ -2,12 +2,12 @@ package ledger.service;
 
 import com.google.protobuf.Empty;
 import cs236351.ledger.*;
+import io.grpc.stub.StreamObserver;
 import ledger.repository.LedgerRepository;
 
 import java.math.BigInteger;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
+
 import ledger.util.proto;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -22,53 +22,91 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     int port;
     String host;
     Manager zk;
-    List<LedgerServiceClient> other_servers;
+    List<LedgerServiceClient> shard_clients;
+    List<LedgerServiceClient> other_clients;
 
     // variables
     boolean is_leader = false;
     LedgerServiceClient leader = null; // null if is_leader==true
 
+    @Override
+    public void submitTransactionInternal(cs236351.ledger.Transaction request,
+                                          io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
+        ledger.repository.model.Transaction transaction = proto.fromMessage(request);
+        repository.submitTransaction(transaction);
+        responseObserver.onNext(Res.newBuilder().setRes(ResCode.SUCCESS).build());
+        responseObserver.onCompleted();
+    }
 
     @Override
     public void submitTransaction(cs236351.ledger.Transaction request,
-                                  io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
+                                  io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver){
         ledger.repository.model.Transaction transaction = proto.fromMessage(request);
-        LedgerServiceClient client = getClientResponsibleFor(transaction.getId());
+        LedgerServiceClient client = null;
+        try {
+            client = getLeaderResponsibleForAddress(transaction.getInputAddress());
+        } catch (Exception e) {
+            responseObserver.onNext(Res.newBuilder().setRes(ResCode.FAILURE).build());
+            responseObserver.onCompleted();
+        }
+
         if (client != null){
             Res res = client.getStub().submitTransaction(request);
             responseObserver.onNext(res);
             responseObserver.onCompleted();
         }
-        // this shard is responsible
+
         else{
-            // TODO: check everything is legal here...
             // transfer coins
             BigInteger transaction_id = transaction.getId();
             for (ledger.repository.model.Transfer transfer : transaction.getOutputs()) {
-                int shard_transfer = getShardResponsibleFor(transfer.getAddress());
-                if (this.shard == shard_transfer){
+                try {
+                    client = getLeaderResponsibleForAddress(transfer.getAddress());
+                } catch (Exception e) {
+                   // could not send transfer... this should not happen though! (according to assignment)
+                    e.printStackTrace();
+                }
+                if (client == null){
                     repository.submitTransfer(transfer, transaction_id);
                 }
                 else{
-                    LedgerServiceGrpc.LedgerServiceBlockingStub stub = getClientForShard(shard_transfer).getStub();
-                    stub.submitTransfer(
+                    client.getStub().submitTransfer(
                             cs236351.ledger.TransferAndTransactionID.newBuilder().
                                     setTransfer(proto.toMessage(transfer)).
                                     setTransactionId(proto.toUint128(transaction_id)).
                                     build());
                 }
             }
+            transaction.setId(generateTransactionID());
             repository.submitTransaction(transaction);
+            for (LedgerServiceClient shard_client : shard_clients){
+                shard_client.getStub().submitTransactionInternal(request);
+            }
             responseObserver.onNext(Res.newBuilder().setRes(ResCode.SUCCESS).build());
             responseObserver.onCompleted();
         }
     }
 
     @Override
+    public StreamObserver<Transaction> submitTransactions(StreamObserver<Res> responseObserver) {
+        return super.submitTransactions(responseObserver);
+    }
+
+    @Override
+    public void submitTransfer(cs236351.ledger.TransferAndTransactionID request,
+                               io.grpc.stub.StreamObserver<com.google.protobuf.Empty> responseObserver) {
+        ledger.repository.model.Transfer transfer = proto.fromMessage(request.getTransfer());
+        BigInteger transaction_id = proto.toBigInteger(request.getTransactionId());
+        repository.submitTransfer(transfer, transaction_id);
+        responseObserver.onNext(Empty.newBuilder().build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
     public void getUTxOs(cs236351.ledger.uint128 request,
                          io.grpc.stub.StreamObserver<cs236351.ledger.UTxO> responseObserver) {
-        BigInteger id = proto.toBigInteger(request);
-        LedgerServiceClient client = getClientResponsibleFor(id);
+        BigInteger address = proto.toBigInteger(request);
+        LedgerServiceClient client = getClientResponsibleForAddress(address);
         if (client != null){
             Iterator<UTxO> it = client.getStub().getUTxOs(request);
             while(it.hasNext()){
@@ -84,20 +122,38 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     }
 
     @Override
+    public void sendCoins(cs236351.ledger.AddressAndAmount request,
+                          io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
+
+    }
+
+    @Override
     public void getTransactions(cs236351.ledger.AddressAndMax request,
                                 io.grpc.stub.StreamObserver<cs236351.ledger.Transaction> responseObserver) {
         BigInteger address = proto.toBigInteger(request.getAddress());
         int max = request.getMax();
-        for (ledger.repository.model.Transaction t : repository.getTransactions(address, max)){
-            responseObserver.onNext(proto.toMessage(t));
-        }
-        for (int curr_shard=0; curr_shard<num_shards; curr_shard++){
-            if (curr_shard != this.shard){
-                Iterator<Transaction> it = getClientForShard(curr_shard).getStub().getTransactions(request);
-                while (it.hasNext()){
-                    responseObserver.onNext(it.next());
-                }
+        LedgerServiceClient client = getClientResponsibleForAddress(address);
+        if (client == null) {
+            for (ledger.repository.model.Transaction t : repository.getTransactions(address, max)) {
+                responseObserver.onNext(proto.toMessage(t));
             }
+            responseObserver.onCompleted();
+        }
+        else {
+            Iterator<Transaction> it = client.getStub().getTransactions(request);
+            while(it.hasNext()){
+                responseObserver.onNext(it.next());
+            }
+            responseObserver.onCompleted();
+        }
+    }
+
+    @Override
+    public void getAllShardTransactions(cs236351.ledger.Max request,
+                                   io.grpc.stub.StreamObserver<cs236351.ledger.Transaction> responseObserver) {
+        int max = request.getMax();
+        for (ledger.repository.model.Transaction t : repository.getAllTransactions(max)) {
+            responseObserver.onNext(proto.toMessage(t));
         }
         responseObserver.onCompleted();
     }
@@ -106,32 +162,23 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     public void getAllTransactions(cs236351.ledger.Max request,
                                    io.grpc.stub.StreamObserver<cs236351.ledger.Transaction> responseObserver) {
         int max = request.getMax();
+        List<Transaction> transactions = new ArrayList<>();
         for (ledger.repository.model.Transaction t : repository.getAllTransactions(max)){
-            responseObserver.onNext(proto.toMessage(t));
+            transactions.add(proto.toMessage(t));
         }
         for (int curr_shard=0; curr_shard<num_shards; curr_shard++){
             if (curr_shard != this.shard){
-                Iterator<Transaction> it = getClientForShard(curr_shard).getStub().getAllTransactions(request);
+                LedgerServiceClient client = getClientResponsibleForShard(curr_shard);
+                Iterator<Transaction> it = client.getStub().getAllShardTransactions(request);
                 while (it.hasNext()){
-                    responseObserver.onNext(it.next());
+                    transactions.add(it.next());
                 }
             }
         }
-        responseObserver.onCompleted();
-    }
-
-    @Override
-    public void getTransferCoins(cs236351.ledger.Transfer request,
-                                 io.grpc.stub.StreamObserver<cs236351.ledger.Coins> responseObserver) {
-    }
-
-    @Override
-    public void submitTransfer(cs236351.ledger.TransferAndTransactionID request,
-                               io.grpc.stub.StreamObserver<com.google.protobuf.Empty> responseObserver) {
-        ledger.repository.model.Transfer transfer = proto.fromMessage(request.getTransfer());
-        BigInteger transaction_id = proto.toBigInteger(request.getTransactionId());
-        repository.submitTransfer(transfer, transaction_id);
-        responseObserver.onNext(Empty.newBuilder().build());
+        sortTransactions(transactions);
+        for (Transaction t : transactions) {
+            responseObserver.onNext(t);
+        }
         responseObserver.onCompleted();
     }
 
@@ -147,44 +194,77 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         this.host = host;
     }
 
-    public void setShard(int shard){
-        this.shard = shard;
-    }
-
     public void setNumShards(int num_shards){
         this.num_shards = num_shards;
     }
 
-    public void setServers(List<LedgerServiceClient> others_servers){
-        this.other_servers = others_servers;
+    public void setServers(int shard, List<LedgerServiceClient> clients){
+        this.shard = shard;
+        for (LedgerServiceClient client : clients){
+            if (client.getShard() == shard) {
+                this.shard_clients.add(client);
+            }
+            else {
+                this.other_clients.add(client);
+            }
+        }
     }
 
     private int getShardResponsibleFor(BigInteger address){
         return address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
     }
 
-    private LedgerServiceClient getClientResponsibleFor(BigInteger address){
-        int shard_responsible = address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
-        if (shard_responsible == this.shard){
+    private LedgerServiceClient getLeaderResponsibleForShard(int shard)
+            throws InterruptedException, KeeperException {
+        if (shard == this.shard){
             // leader not initialized
             if (!is_leader && leader==null){
-                for (int i = 0; i<32; i++) {
-                    try {
-                        electLeader();
-                        leader = getLeader();
-                        is_leader = (leader == null);
-                        break;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    electLeader();
+                    leader = getLeader();
+                    is_leader = (leader == null);
                 }
-            }
             return leader;
         }
         else {
-            // we should probably check who is alive first, maybe try all of them one by one...
-            return getClientForShard(shard_responsible);
+            return getClientResponsibleForShard(shard);
         }
+    }
+
+    private LedgerServiceClient getLeaderResponsibleForAddress(BigInteger address)
+            throws InterruptedException, KeeperException {
+        int responsible_shard = getShardResponsibleFor(address);
+        return getLeaderResponsibleForShard(responsible_shard);
+    }
+
+    private LedgerServiceClient getClientResponsibleForShard(int shard){
+        if (shard == this.shard){
+            return null;
+        }
+        else {
+            List<LedgerServiceClient> dead_clients = new ArrayList<>();
+            LedgerServiceClient responsible_client = null;
+            for (LedgerServiceClient client : other_clients){
+                if (!client.isAlive()){
+                    dead_clients.add(client);
+                }
+                else if (client.getShard() == shard){
+                    responsible_client = client;
+                    break;
+                }
+            }
+            for (LedgerServiceClient dead_client : dead_clients){
+                other_clients.remove(dead_client);
+            }
+            if (responsible_client == null){
+                throw new NoSuchElementException("No alive servers responsible for shard!");
+            }
+            return responsible_client;
+        }
+    }
+
+    private LedgerServiceClient getClientResponsibleForAddress(BigInteger address){
+        int shard_responsible = address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
+        return getClientResponsibleForShard(shard_responsible);
     }
 
     private BigInteger generateTransactionID(){
@@ -236,7 +316,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             return null;
         }
 
-        for (LedgerServiceClient client : other_servers){
+        for (LedgerServiceClient client : shard_clients){
             if (client.getHost().equals(leader_host) && client.getPort() == leader_port){
                 return client;
             }
@@ -259,12 +339,11 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         }
     }
 
-    private LedgerServiceClient getClientForShard(int shard){
-        for (LedgerServiceClient client : this.other_servers){
-            if (client.getShard() == shard){
-                return client;
+    private void sortTransactions(List<Transaction> transactions){
+        transactions.sort(new Comparator<Transaction>() {
+            public int compare(Transaction t0, Transaction t1) {
+                return proto.toBigInteger(t0.getId()).compareTo(proto.toBigInteger(t1.getId()));
             }
-        }
-        throw new NoSuchElementException("shard doesn't exist");
+        });
     }
 }

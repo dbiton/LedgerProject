@@ -10,12 +10,27 @@ package cs236351.ledger;
 
 service LedgerService {
   // client to server communication
+  // write
+  rpc SendCoins(AddressAndAmount) returns (Res) {}
   rpc SubmitTransaction(Transaction) returns (Res) {}
+  rpc SubmitTransactions(stream Transaction) returns (Res) {}
+  // read
   rpc GetUTxOs(uint128) returns (stream UTxO) {}
   rpc GetTransactions(AddressAndMax) returns (stream Transaction) {}
   rpc GetAllTransactions(Max) returns (stream Transaction) {}
 
   // server to server communication
-  rpc GetTransferCoins(Transfer) returns (Coins) {}
+  // write
   rpc SubmitTransfer(TransferAndTransactionID) returns (google.protobuf.Empty) {}
+  // read
+  rpc GetAllShardTransactions(Max) returns (stream Transaction) {}
+
+  // write
+  rpc SendCoinsInternal(AddressAndAmount) returns (Res) {}
+  rpc SubmitTransactionInternal(Transaction) returns (Res) {}
+  rpc SubmitTransactionsInternal(stream Transaction) returns (Res) {}
+  // read
+  rpc GetUTxOsInternal(uint128) returns (stream UTxO) {}
+  rpc GetTransactionsInternal(AddressAndMax) returns (stream Transaction) {}
+  rpc GetAllTransactionsInternal(Max) returns (stream Transaction) {}
 }
