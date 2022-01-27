@@ -42,6 +42,10 @@ public class LedgerServiceClient {
     }
 
     public boolean isAlive() {
+        if (stub == null){
+            this.channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
+            stub = LedgerServiceGrpc.newBlockingStub(channel);
+        }
        return channel.isTerminated() || channel.isShutdown();
     }
 }

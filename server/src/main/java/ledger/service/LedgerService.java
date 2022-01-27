@@ -22,12 +22,9 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     int port;
     String host;
     Manager zk;
-    List<LedgerServiceClient> shard_clients;
-    List<LedgerServiceClient> other_clients;
-
-    // variables
-    boolean is_leader = false;
-    LedgerServiceClient leader = null; // null if is_leader==true
+    List<LedgerServiceClient> shard_clients = new ArrayList<>();
+    List<LedgerServiceClient> other_clients = new ArrayList<>();
+    List<LedgerServiceClient> leader_order;
 
     @Override
     public void submitTransactionInternal(cs236351.ledger.Transaction request,
@@ -129,9 +126,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             repository.submitTransfer(transfer_coins, transaction_id);
             // followers copy the leader...
             for (LedgerServiceClient follower : shard_clients){
-                if (follower != leader){
-                    follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
-                }
+                follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
             }
         }
         else{
@@ -149,9 +144,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             repository.submitTransfer(transfer_change, transaction_id);
             // followers copy the leader...
             for (LedgerServiceClient follower : shard_clients){
-                if (follower != leader){
-                    follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
-                }
+                follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
             }
         }
         ledger.repository.model.Transaction transaction =
@@ -159,24 +152,23 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
 
         // followers copy the leader...
         for (LedgerServiceClient follower : shard_clients){
-            if (follower != leader){
-                follower.getStub().submitTransactionInternal(proto.toMessage(transaction));
-            }
+            follower.getStub().submitTransactionInternal(proto.toMessage(transaction));
         }
     }
 
     @Override
     public void submitTransfer(cs236351.ledger.TransferAndTransactionID request,
                                io.grpc.stub.StreamObserver<com.google.protobuf.Empty> responseObserver) {
-        if (is_leader) {
+        LedgerServiceClient leader_client = getLeader();
+        if (leader_client == null) {
             ledger.repository.model.Transfer transfer = proto.fromMessage(request.getTransfer());
             BigInteger transaction_id = proto.toBigInteger(request.getTransactionId());
             repository.submitTransfer(transfer, transaction_id);
-            for (LedgerServiceClient client : shard_clients){
-                client.getStub().submitTransferInternal(request);
+            for (LedgerServiceClient follower_client : shard_clients){
+                follower_client.getStub().submitTransferInternal(request);
             }
         } else {
-            leader.getStub().submitTransfer(request);
+            leader_client.getStub().submitTransfer(request);
         }
         responseObserver.onNext(Empty.newBuilder().build());
         responseObserver.onCompleted();
@@ -298,15 +290,21 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         return address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
     }
 
+    private LedgerServiceClient getLeader(){
+        // leader not initialized
+        if (leader_order == null) {
+            electLeader();
+            leader_order = getLeaderOrder();
+        }
+        while (leader_order.isEmpty()) {
+            leader_order = getLeaderOrder();
+        }
+        return leader_order.get(0);
+    }
+
     private LedgerServiceClient getLeaderResponsibleForShard(int shard) {
         if (shard == this.shard){
-            // leader not initialized
-            if (!is_leader && leader==null){
-                    electLeader();
-                    leader = getLeader();
-                    is_leader = (leader == null);
-                }
-            return leader;
+            return getLeader();
         }
         else {
             return getClientResponsibleForShard(shard);
@@ -326,10 +324,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             List<LedgerServiceClient> dead_clients = new ArrayList<>();
             LedgerServiceClient responsible_client = null;
             for (LedgerServiceClient client : other_clients){
-                if (!client.isAlive()){
-                    dead_clients.add(client);
-                }
-                else if (client.getShard() == shard){
+                if (client.getShard() == shard){
                     responsible_client = client;
                     break;
                 }
@@ -370,47 +365,42 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         return max;
     }
 
-    private LedgerServiceClient getLeader() {
-        String leader_address = null;
+    private List<LedgerServiceClient> getLeaderOrder() {
         String shared_str = String.valueOf(this.shard);
         List<String> timestamps = new ArrayList<>();
         try {
             timestamps = zk.getChildren("/leaders/" + shared_str);
         }
         catch (Exception e){
-            // do nothing
+            System.out.println(e.getMessage());
         }
-        long ts_min = Long.MAX_VALUE;
+        Map<Long, String> leaders_sorted = new TreeMap<>();
         for (String t : timestamps) {
             String[] strings = t.split("-");
             String address = strings[0];
-            long ts = Long.parseLong(strings[1]);
-            if (ts < ts_min){
-                ts_min = ts;
-                leader_address = address;
+            Long ts = Long.valueOf(strings[1]);
+            leaders_sorted.put(ts, address);
+        }
+        List<LedgerServiceClient> leader_order = new ArrayList<>();
+        for (String leader_address : leaders_sorted.values()){
+            String[] leader_address_data = leader_address.split(":");
+            String leader_host = leader_address_data[0];
+            int leader_port = Integer.parseInt(leader_address_data[1]);
+
+            if (this.port == leader_port && this.host.equals(leader_host)){
+                leader_order.add(null);
+                break;
+            }
+            else {
+                for (LedgerServiceClient client : shard_clients) {
+                    if (client.getPort() == leader_port && client.getHost().equals(leader_host)) {
+                        leader_order.add(client);
+                        break;
+                    }
+                }
             }
         }
-
-        if (leader_address == null){
-            throw new NoSuchElementException("leader not found in clients!");
-        }
-
-        String[] leader_data = leader_address.split(":");
-        String leader_host = leader_data[0];
-        int leader_port = Integer.parseInt(leader_data[1]);
-
-        // this server is the leader!
-        if (leader_host.equals(this.host) && leader_port == this.port){
-            return null;
-        }
-
-        for (LedgerServiceClient client : shard_clients){
-            if (client.getHost().equals(leader_host) && client.getPort() == leader_port){
-                return client;
-            }
-        }
-
-        throw new NoSuchElementException("leader not found in clients!");
+        return leader_order;
     }
 
     private void electLeader(){
@@ -423,7 +413,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             zk.create("/leaders/" + shard_str+ "/" + this.host + ":" + port_str +"-",
                     null, CreateMode.EPHEMERAL_SEQUENTIAL);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 
