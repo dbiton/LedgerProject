@@ -10,7 +10,6 @@ import java.util.*;
 
 import ledger.util.proto;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import zookeeper.Manager;
 
 public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
@@ -99,6 +98,14 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             }
 
             private boolean isIndependent(List<Transaction> transactions){
+                // inputs should not be in the outputs of other transactions
+                List<Set<String>> inputs = new ArrayList<>();
+                List<Set<String>> outputs = new ArrayList<>();
+                for (Transaction t_msg : transactions){
+                    ledger.repository.model.Transaction t = proto.fromMessage(t_msg);
+                    Set<String> ins = new TreeSet<>();
+                    Set<String> outs = new TreeSet<>();
+                }
                 return true;
             }
 

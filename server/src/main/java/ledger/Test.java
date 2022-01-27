@@ -8,20 +8,11 @@ import ledger.service.LedgerServer;
 import ledger.service.LedgerServiceClient;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.ACL;
-import zookeeper.Connection;
-import zookeeper.Manager;
-import zookeeper.ManagerImpl;
-
-public class Main {
+public class Test {
     final static List<Integer> zookeeper_ports = Arrays.asList(2181, 2182, 2183);
     final static List<Integer> server_ports = Arrays.asList(3453, 12345, 2343);
 
