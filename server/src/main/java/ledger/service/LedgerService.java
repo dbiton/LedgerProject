@@ -93,7 +93,97 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
     }
 
     @Override
+    public StreamObserver<Transaction> submitTransactionsInternal(StreamObserver<Res> responseObserver) {
+        return super.submitTransactions(responseObserver);
+    }
+
+    @Override
+    public void sendCoins(cs236351.ledger.AddressesAndAmount request,
+                          io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
+        BigInteger address_from = proto.toBigInteger(request.getAddressFrom());
+        LedgerServiceClient client = getLeaderResponsibleForAddress(address_from);
+        // we are not responsible for this request, redirect it to someone else
+        if (client != null){
+            Res res = client.getStub().sendCoins(request);
+            responseObserver.onNext(res);
+            responseObserver.onCompleted();
+        }
+        BigInteger address_to = proto.toBigInteger(request.getAddressTo());
+        long amount = request.getAmount();
+
+        List<ledger.repository.model.UTxO> inputs = repository.consumeUTxOs(address_from, amount);
+        // we don't have enough coins for the transaction!
+        if (inputs.isEmpty()){
+            responseObserver.onNext(Res.newBuilder().setRes(ResCode.FAILURE).build());
+            responseObserver.onCompleted();
+        }
+
+        List<ledger.repository.model.Transfer> outputs = new ArrayList<>();
+        ledger.repository.model.Transfer transfer_coins = new ledger.repository.model.Transfer(address_to, amount);
+        outputs.add(transfer_coins);
+
+        BigInteger transaction_id = generateTransactionID();
+        LedgerServiceClient client_recv = getLeaderResponsibleForAddress(address_from);
+        // we are also responsible for address_to
+        if (client_recv == null){
+            repository.submitTransfer(transfer_coins, transaction_id);
+            // followers copy the leader...
+            for (LedgerServiceClient follower : shard_clients){
+                if (follower != leader){
+                    follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
+                }
+            }
+        }
+        else{
+            client_recv.getStub().submitTransfer(proto.toMessage(transfer_coins, transaction_id));
+        }
+
+        long amount_input = 0;
+        for (ledger.repository.model.UTxO input : inputs){
+            amount_input += input.getCoins();
+        }
+        long change = amount_input - amount;
+        if (change > 0){
+            ledger.repository.model.Transfer transfer_change = new ledger.repository.model.Transfer(address_to, amount);
+            outputs.add(transfer_change);
+            repository.submitTransfer(transfer_change, transaction_id);
+            // followers copy the leader...
+            for (LedgerServiceClient follower : shard_clients){
+                if (follower != leader){
+                    follower.getStub().submitTransferInternal(proto.toMessage(transfer_coins, transaction_id));
+                }
+            }
+        }
+        ledger.repository.model.Transaction transaction =
+                new ledger.repository.model.Transaction(transaction_id, inputs, outputs);
+
+        // followers copy the leader...
+        for (LedgerServiceClient follower : shard_clients){
+            if (follower != leader){
+                follower.getStub().submitTransactionInternal(proto.toMessage(transaction));
+            }
+        }
+    }
+
+    @Override
     public void submitTransfer(cs236351.ledger.TransferAndTransactionID request,
+                               io.grpc.stub.StreamObserver<com.google.protobuf.Empty> responseObserver) {
+        if (is_leader) {
+            ledger.repository.model.Transfer transfer = proto.fromMessage(request.getTransfer());
+            BigInteger transaction_id = proto.toBigInteger(request.getTransactionId());
+            repository.submitTransfer(transfer, transaction_id);
+            for (LedgerServiceClient client : shard_clients){
+                client.getStub().submitTransferInternal(request);
+            }
+        } else {
+            leader.getStub().submitTransfer(request);
+        }
+        responseObserver.onNext(Empty.newBuilder().build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void submitTransferInternal(cs236351.ledger.TransferAndTransactionID request,
                                io.grpc.stub.StreamObserver<com.google.protobuf.Empty> responseObserver) {
         ledger.repository.model.Transfer transfer = proto.fromMessage(request.getTransfer());
         BigInteger transaction_id = proto.toBigInteger(request.getTransactionId());
@@ -119,12 +209,6 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
             }
         }
         responseObserver.onCompleted();
-    }
-
-    @Override
-    public void sendCoins(cs236351.ledger.AddressAndAmount request,
-                          io.grpc.stub.StreamObserver<cs236351.ledger.Res> responseObserver) {
-
     }
 
     @Override
@@ -214,8 +298,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         return address.remainder(BigInteger.valueOf(this.num_shards)).intValue();
     }
 
-    private LedgerServiceClient getLeaderResponsibleForShard(int shard)
-            throws InterruptedException, KeeperException {
+    private LedgerServiceClient getLeaderResponsibleForShard(int shard) {
         if (shard == this.shard){
             // leader not initialized
             if (!is_leader && leader==null){
@@ -230,8 +313,7 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         }
     }
 
-    private LedgerServiceClient getLeaderResponsibleForAddress(BigInteger address)
-            throws InterruptedException, KeeperException {
+    private LedgerServiceClient getLeaderResponsibleForAddress(BigInteger address) {
         int responsible_shard = getShardResponsibleFor(address);
         return getLeaderResponsibleForShard(responsible_shard);
     }
@@ -288,10 +370,16 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         return max;
     }
 
-    private LedgerServiceClient getLeader() throws InterruptedException, KeeperException {
+    private LedgerServiceClient getLeader() {
         String leader_address = null;
         String shared_str = String.valueOf(this.shard);
-        List<String> timestamps = zk.getChildren("/leaders/" + shared_str);
+        List<String> timestamps = new ArrayList<>();
+        try {
+            timestamps = zk.getChildren("/leaders/" + shared_str);
+        }
+        catch (Exception e){
+            // do nothing
+        }
         long ts_min = Long.MAX_VALUE;
         for (String t : timestamps) {
             String[] strings = t.split("-");

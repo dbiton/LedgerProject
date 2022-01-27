@@ -42,9 +42,10 @@ message AddressAndMax{
   int32 max = 2;
 }
 
-message AddressAndAmount{
-  uint128 address = 1;
-  uint64 amount = 2;
+message AddressesAndAmount{
+  uint128 address_from = 1;
+  uint128 address_to = 2;
+  uint64 amount = 3;
 }
 
 message UTxO {

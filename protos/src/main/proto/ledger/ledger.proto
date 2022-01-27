@@ -11,7 +11,7 @@ package cs236351.ledger;
 service LedgerService {
   // client to server communication
   // write
-  rpc SendCoins(AddressAndAmount) returns (Res) {}
+  rpc SendCoins(AddressesAndAmount) returns (Res) {}
   rpc SubmitTransaction(Transaction) returns (Res) {}
   rpc SubmitTransactions(stream Transaction) returns (Res) {}
   // read
@@ -22,11 +22,12 @@ service LedgerService {
   // server to server communication
   // write
   rpc SubmitTransfer(TransferAndTransactionID) returns (google.protobuf.Empty) {}
+  rpc SubmitTransferInternal(TransferAndTransactionID) returns (google.protobuf.Empty) {}
   // read
   rpc GetAllShardTransactions(Max) returns (stream Transaction) {}
 
   // write
-  rpc SendCoinsInternal(AddressAndAmount) returns (Res) {}
+  rpc SendCoinsInternal(AddressesAndAmount) returns (Res) {}
   rpc SubmitTransactionInternal(Transaction) returns (Res) {}
   rpc SubmitTransactionsInternal(stream Transaction) returns (Res) {}
   // read

@@ -6,6 +6,7 @@ import cs236351.ledger.uint128;
 import ledger.repository.model.Transaction;
 import ledger.repository.model.UTxO;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,14 @@ public class proto {
         return AddressAndMax.newBuilder()
                 .setAddress(toUint128(address))
                 .setMax(max)
+                .build();
+    }
+
+    public static cs236351.ledger.TransferAndTransactionID toMessage(ledger.repository.model.Transfer transfer,
+                                                                     BigInteger transaction_id){
+        return cs236351.ledger.TransferAndTransactionID.newBuilder()
+                .setTransactionId(toUint128(transaction_id))
+                .setTransfer(toMessage(transfer))
                 .build();
     }
 
