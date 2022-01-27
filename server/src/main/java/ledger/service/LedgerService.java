@@ -53,42 +53,50 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         }
 
         else{
-            // transfer coins
-            BigInteger transaction_id = transaction.getId();
-            for (ledger.repository.model.Transfer transfer : transaction.getOutputs()) {
-                try {
-                    client = getLeaderResponsibleForAddress(transfer.getAddress());
-                } catch (Exception e) {
-                   // could not send transfer... this should not happen though! (according to assignment)
-                    e.printStackTrace();
-                }
-                if (client == null){
-                    repository.submitTransfer(transfer, transaction_id);
-                }
-                else{
-                    client.getStub().submitTransfer(
-                            cs236351.ledger.TransferAndTransactionID.newBuilder().
-                                    setTransfer(proto.toMessage(transfer)).
-                                    setTransactionId(proto.toUint128(transaction_id)).
-                                    build());
-                }
-            }
-            transaction.setId(generateTransactionID());
-            repository.submitTransaction(transaction);
-            for (LedgerServiceClient shard_client : shard_clients){
-                shard_client.getStub().submitTransactionInternal(request);
-            }
+            submitTransactionLeader(request);
             responseObserver.onNext(Res.newBuilder().setRes(ResCode.SUCCESS).build());
             responseObserver.onCompleted();
         }
     }
 
+    private void submitTransactionLeader(cs236351.ledger.Transaction request){
+        ledger.repository.model.Transaction transaction = proto.fromMessage(request);
+        transaction.setId(generateTransactionID());
+        // transfer coins
+        BigInteger transaction_id = transaction.getId();
+        for (ledger.repository.model.Transfer transfer : transaction.getOutputs()) {
+            LedgerServiceClient client;
+            try {
+                client = getLeaderResponsibleForAddress(transfer.getAddress());
+            } catch (Exception e) {
+                // could not send transfer... this should not happen though! (according to assignment details)
+                e.printStackTrace();
+                return;
+            }
+            if (client == null){
+                repository.submitTransfer(transfer, transaction_id);
+            }
+            else{
+                client.getStub().submitTransfer(
+                        cs236351.ledger.TransferAndTransactionID.newBuilder().
+                                setTransfer(proto.toMessage(transfer)).
+                                setTransactionId(proto.toUint128(transaction_id)).
+                                build());
+            }
+        }
+        repository.submitTransaction(transaction);
+        for (LedgerServiceClient shard_client : shard_clients){
+            shard_client.getStub().submitTransactionInternal(request);
+        }
+    }
+
     @Override
     public StreamObserver<Transaction> submitTransactions(StreamObserver<Res> responseObserver) {
-        return new StreamObserver<Transaction>() {
-            List<Transaction> transactions = new ArrayList<Transaction>();
+        return new StreamObserver<>() {
+            final List<Transaction> transactions = new ArrayList<Transaction>();
+
             @Override
-            public void onNext(Transaction transaction){
+            public void onNext(Transaction transaction) {
                 transactions.add(transaction);
             }
 
@@ -97,28 +105,41 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
                 System.out.println("Error while reading transaction stream: " + t);
             }
 
-            private boolean isIndependent(List<Transaction> transactions){
+            private boolean isIndependent(List<Transaction> transactions) {
                 // inputs should not be in the outputs of other transactions
-                List<Set<String>> inputs = new ArrayList<>();
-                List<Set<String>> outputs = new ArrayList<>();
-                for (Transaction t_msg : transactions){
+                Set<String> inputs = new HashSet<>();
+                Set<String> outputs = new HashSet<>();
+                for (Transaction t_msg : transactions) {
                     ledger.repository.model.Transaction t = proto.fromMessage(t_msg);
-                    Set<String> ins = new TreeSet<>();
-                    Set<String> outs = new TreeSet<>();
+                    for (ledger.repository.model.Transfer transfer : t.getOutputs()) {
+                        String in = transfer.getAddress() + ":" + t.getId();
+                        inputs.add(in);
+                    }
+                    for (ledger.repository.model.UTxO utxo : t.getInputs()) {
+                        String out = utxo.getAddress() + ":" + utxo.getTransaction_id();
+                        outputs.add(out);
+                    }
+                    // usually outputs is smaller...
+                    for (String out : outputs) {
+                        if (inputs.contains(out)) {
+                            return false;
+                        }
+                    }
+                    return true;
                 }
                 return true;
             }
 
             @Override
             public void onCompleted() {
-                if (isIndependent(transactions)){
-                    for (Transaction transaction : transactions){
+                if (isIndependent(transactions)) {
+                    for (Transaction transaction : transactions) {
                         BigInteger address_sender = proto.fromMessage(transaction).getInputAddress();
                         LedgerServiceClient client = getLeaderResponsibleForAddress(address_sender);
-                        if (client == null){
+                        if (client == null) {
                             // we are responsible for the commit
-                        }
-                        else{
+                            submitTransactionLeader(transaction);
+                        } else {
                             client.getStub().submitTransaction(transaction);
                         }
                     }

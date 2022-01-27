@@ -1,10 +1,10 @@
 package ledger.controller;
 
 import cs236351.ledger.*;
-import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
 import ledger.repository.model.Transaction;
 import ledger.repository.model.UTxO;
 import ledger.util.proto;
@@ -37,9 +37,29 @@ public class LedgerController {
     }
 
     public boolean submitTransactions(List<Transaction> transactions) {
-        //Res res = stub.submitTransactions(transactions);
-        //return res.getRes().equals(ResCode.SUCCESS);
-        return false;
+        LedgerServiceGrpc.LedgerServiceStub streaming_stub = LedgerServiceGrpc.newStub(channel);
+        final boolean[] success = {false};
+        StreamObserver<cs236351.ledger.Transaction> so =
+                streaming_stub.submitTransactions(
+                        new StreamObserver<Res>() {
+            @Override
+            public void onNext(Res value) {
+                success[0] = value.getRes().equals(ResCode.SUCCESS);
+            }
+            @Override
+            public void onError(Throwable t) {
+            }
+            @Override
+            public void onCompleted() {
+            }
+        });
+
+        for (Transaction t : transactions){
+            so.onNext(proto.toMessage(t));
+        }
+        so.onCompleted();
+
+        return success[0];
     }
 
     public List<UTxO> getUTxOs(BigInteger address){
