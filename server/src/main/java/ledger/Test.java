@@ -65,23 +65,23 @@ public class Test {
             }
         }
 
-        LedgerController client = new LedgerController(BigInteger.ZERO, localhost, server_ports.get(0));
+        LedgerController client = new LedgerController(localhost, server_ports.get(0));
 
         List<UTxO> inputs = List.of(new UTxO(BigInteger.ZERO, BigInteger.ZERO));
         List<Transfer> outputs = Arrays.asList(new Transfer(BigInteger.ONE, 32), new Transfer(BigInteger.TEN, 64), new Transfer(BigInteger.TWO, 128));
         Transaction transaction = new Transaction(BigInteger.ZERO, inputs, outputs);
 
-        client.sendCoins(BigInteger.ONE, 1232);
-        client.sendCoins(BigInteger.TWO, 1234);
-        client.sendCoins(BigInteger.TWO, 234);
-        client.sendCoins(BigInteger.TWO, 2134);
-        client.sendCoins(BigInteger.TEN, 23512);
-        client.sendCoins(BigInteger.TEN, 34432);
-        client.sendCoins(BigInteger.TEN, 3424123);
-        client.sendCoins(BigInteger.TEN, 33224);
-        client.sendCoins(BigInteger.TWO, 32322);
-        client.sendCoins(BigInteger.TEN, 123);
-        client.sendCoins(BigInteger.ONE, 1231);
+        client.sendCoins(BigInteger.ONE, BigInteger.ZERO, 1232);
+        client.sendCoins(BigInteger.TWO, BigInteger.ZERO, 1234);
+        client.sendCoins(BigInteger.TWO, BigInteger.ZERO, 234);
+        client.sendCoins(BigInteger.TWO, BigInteger.ZERO, 2134);
+        client.sendCoins(BigInteger.TEN, BigInteger.ZERO, 23512);
+        client.sendCoins(BigInteger.TEN, BigInteger.ZERO,  34432);
+        client.sendCoins(BigInteger.TEN, BigInteger.ZERO, 3424123);
+        client.sendCoins(BigInteger.TEN, BigInteger.ZERO, 33224);
+        client.sendCoins(BigInteger.TWO, BigInteger.ZERO, 32322);
+        client.sendCoins(BigInteger.TEN, BigInteger.ZERO, 123);
+        client.sendCoins(BigInteger.ONE, BigInteger.ZERO, 1231);
 
         List<UTxO> us = client.getUTxOs(BigInteger.ZERO);
         List<Transaction> ts = client.getAllTransactions(32);

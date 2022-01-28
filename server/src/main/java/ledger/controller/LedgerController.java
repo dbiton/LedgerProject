@@ -15,19 +15,17 @@ import java.util.Iterator;
 import java.util.List;
 
 public class LedgerController {
-    private final BigInteger address;
     private final LedgerServiceGrpc.LedgerServiceBlockingStub stub;
     private final ManagedChannel channel;
 
 
-    public LedgerController(BigInteger address, String host, int port){
-        this.address = address;
+    public LedgerController(String host, int port){
         this.channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
         this.stub = LedgerServiceGrpc.newBlockingStub(channel);
     }
 
-    public boolean sendCoins(BigInteger address_to, long amount){
-        Res res = stub.sendCoins(proto.toMessage(this.address, address_to, amount));
+    public boolean sendCoins(BigInteger address_from , BigInteger address_to, long amount){
+        Res res = stub.sendCoins(proto.toMessage(address_from, address_to, amount));
         return res.getRes().equals(ResCode.SUCCESS);
     }
 

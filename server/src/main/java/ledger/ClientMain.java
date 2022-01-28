@@ -10,7 +10,7 @@ public class ClientMain {
         BigInteger address = new BigInteger(args[0]);
         String host = args[1];
         int port = Integer.parseInt(args[2]);
-        LedgerController client = new LedgerController(address, host, port);
+        LedgerController client = new LedgerController(host, port);
 
         Console console = System.console();
 
