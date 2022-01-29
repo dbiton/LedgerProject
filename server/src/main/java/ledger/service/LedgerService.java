@@ -407,6 +407,9 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         BigInteger max = null;
         try {
             String shard_str = String.valueOf(this.shard);
+            if (!zk.exists("/transactions")){
+                zk.create("/transactions" , null, CreateMode.PERSISTENT);
+            }
             zk.create("/transactions/" + shard_str+"-", null, CreateMode.EPHEMERAL_SEQUENTIAL);
             List<String> timestamps = zk.getChildren("/transactions");
             for (String t : timestamps){
@@ -466,6 +469,9 @@ public class LedgerService extends LedgerServiceGrpc.LedgerServiceImplBase {
         try {
             String shard_str = String.valueOf(this.shard);
             String port_str = String.valueOf(this.port);
+            if (!zk.exists("/leaders")){
+                zk.create("/leaders", null, CreateMode.PERSISTENT);
+            }
             if (!zk.exists("/leaders/" + shard_str)){
                 zk.create("/leaders/" + shard_str, null, CreateMode.PERSISTENT);
             }

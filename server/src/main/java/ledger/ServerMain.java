@@ -1,31 +1,24 @@
 package ledger;
 
-import ledger.controller.LedgerController;
-import ledger.repository.model.Transaction;
-import ledger.repository.model.Transfer;
-import ledger.repository.model.UTxO;
 import ledger.service.LedgerServer;
 import ledger.service.LedgerServiceClient;
 
-import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class ServerMain {
     public static void main(String[] args) {
-        int server_id = Integer.parseInt(args[0]);
-        String host = args[1];
-        int port = Integer.parseInt(args[2]);
-        int num_shards = Integer.parseInt(args[3]);
-        String zookeeper_host = args[4];
+        String[] args1 = {"0", "127.0.0.1:66667", "6666", "4", "127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183", "1", "127.0.0.1:6668", "6666"};
+        int server_id = Integer.parseInt(args1[0]);
+        String host = args1[1];
+        int port = Integer.parseInt(args1[2]);
+        int num_shards = Integer.parseInt(args1[3]);
+        String zookeeper_host = args1[4];
         List<LedgerServiceClient> other_servers = new ArrayList<>();
-        for (int j=5; j<args.length; j+=3){
-            int other_port = Integer.parseInt(args[j]);
-            int other_id = Integer.parseInt(args[j+1]);
-            String other_host = args[j+2];
+        for (int j=5; j<args1.length; j+=3){
+            int other_port = Integer.parseInt(args1[j+2]);
+            int other_id = Integer.parseInt(args1[j]);
+            String other_host = args1[j+1];
             int other_shard = other_id % num_shards;
             other_servers.add(new LedgerServiceClient(other_shard, other_host, other_port));
         }

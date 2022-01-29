@@ -71,20 +71,6 @@ public class Test {
         List<Transfer> outputs = Arrays.asList(new Transfer(BigInteger.ONE, 32), new Transfer(BigInteger.TEN, 64), new Transfer(BigInteger.TWO, 128));
         Transaction transaction = new Transaction(BigInteger.ZERO, inputs, outputs);
 
-        List<Transaction> transactions = new ArrayList<>();
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        transactions.add(transaction);
-        client.submitTransactions(transactions);
-
-
         client.sendCoins(BigInteger.ONE, 1232);
         client.sendCoins(BigInteger.TWO, 1234);
         client.sendCoins(BigInteger.TWO, 234);
