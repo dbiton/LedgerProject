@@ -14,13 +14,6 @@ plugins {
 
 java.sourceCompatibility = JavaVersion.VERSION_11
 
-configurations {
-    all {
-        exclude("ch.qos.logback", "logback-classic")
-        exclude("org.apache.logging.log4j", "log4j-to-slf4j")
-    }
-}
-
 dependencies {
     // Protobuf Dependencies
     implementation(project(":stub"))
@@ -36,10 +29,7 @@ dependencies {
     // implementation("org.slf4j:slf4j-log4j12:${rootProject.ext["log4jVersion"]}")
 
     // https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper
-    implementation("org.apache.zookeeper:zookeeper:${rootProject.ext["zookeeperVersion"]}"){
-        exclude("ch.qos.logback", "logback-classic")
-        exclude("org.slf4j")
-    }
+    implementation("org.apache.zookeeper:zookeeper:${rootProject.ext["zookeeperVersion"]}")
 
     // https://github.com/MicroUtils/kotlin-logging
     //    implementation("io.github.microutils:kotlin-logging-jvm:2.0.10")
@@ -49,22 +39,17 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:${rootProject.ext["coroutinesVersion"]}")
 
     // Spring (REST API) Dependencies
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa"){
-        exclude("org.slf4j")
-    }
-    implementation("org.springframework.boot:spring-boot-starter-web"){
-        exclude("org.slf4j")
-    }
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    developmentOnly("org.springframework.boot:spring-boot-devtools"){
-        exclude("org.slf4j")
-    }
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.h2database:h2")
-    testImplementation("org.springframework.boot:spring-boot-starter-test"){
-        exclude("org.slf4j")
-    }
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+repositories {
+    mavenCentral()
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

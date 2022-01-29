@@ -40,6 +40,7 @@ public class LedgerRestController {
 
     @PostMapping("/transactions")
     public @ResponseBody List<Transaction> submitTransactions(@RequestBody List<TransactionRequest> transactions) {
+        System.out.println("submitTransactions");
         if (transactions.size() > 1) {
         } else {
         }
@@ -48,22 +49,26 @@ public class LedgerRestController {
 
     @PostMapping("/send_coins")
     public @ResponseBody Transaction sendCoins(@RequestBody SendCoinsRequest body) {
+        System.out.println("sendCoins");
         return new Transaction(new BigInteger("0"), new ArrayList<>(), new ArrayList<>());
     }
 
     @GetMapping("/transactions/{address}")
     public @ResponseBody List<Transaction> getTransactions(@PathVariable String address,
                                                                      @RequestParam(required = false, defaultValue = limit_null) int limit) {
+        System.out.println("getTransactions");
         return new ArrayList<>();
     }
 
     @GetMapping("/transactions")
     public @ResponseBody List<Transaction> getAllTransactions(@RequestParam(required = false, defaultValue = limit_null) int limit) {
+        System.out.println("getAllTransactions");
         return new ArrayList<>();
     }
 
     @GetMapping("/utxos/{address}")
     public @ResponseBody List<UTxO> getUTxOs(@PathVariable String address) {
+        System.out.println("getUTxOs");
         return new ArrayList<>();
     }
 }
