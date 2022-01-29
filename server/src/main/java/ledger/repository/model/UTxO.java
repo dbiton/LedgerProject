@@ -1,13 +1,24 @@
 package ledger.repository.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonSerializer;
 
+import javax.persistence.*;
 import java.math.BigInteger;
+import java.util.Objects;
 
+@Entity
 public class UTxO {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonProperty("transaction_id")
     BigInteger transaction_id;
+    @JsonProperty("address")
     BigInteger address;
     Long coins = null;
+
+    public UTxO(){
+    }
 
     public UTxO(BigInteger transaction_id, BigInteger address){
         this.transaction_id = transaction_id;
@@ -34,7 +45,7 @@ public class UTxO {
         this.address = address;
     }
 
-    public void getTransaction_id(BigInteger transaction_id){
+    public void setTransaction_id(BigInteger transaction_id){
         this.transaction_id = transaction_id;
     }
 
@@ -45,5 +56,18 @@ public class UTxO {
                 ", address=" + address +
                 ", coins=" + coins +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UTxO uTxO = (UTxO) o;
+        return Objects.equals(address, uTxO.address) && Objects.equals(this.transaction_id, uTxO.transaction_id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(address, transaction_id);
     }
 }
