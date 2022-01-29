@@ -1,6 +1,6 @@
 package ledger.rest;
 
-import constants.Constants;
+import constant.Const;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -23,16 +23,14 @@ public class RestServer {
     public static void main(String[] args) {
         org.apache.log4j.BasicConfigurator.configure();
         SpringApplication app = new SpringApplication(RestServer.class);
-        app.setDefaultProperties(Collections.singletonMap("server.port", System.getenv(Constants.ENV_HTTP_PORT)));
+        app.setDefaultProperties(Collections.singletonMap("server.port", System.getenv(Const.PORT_HTTP)));
         app.run(args);
     }
 
     @Bean
     public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
         return args -> {
-
             System.out.println("Let's inspect the beans provided by Spring Boot:");
-
             String[] beanNames = ctx.getBeanDefinitionNames();
             Arrays.sort(beanNames);
             for (String beanName : beanNames) {
