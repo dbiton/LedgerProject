@@ -1,10 +1,8 @@
 package ledger;
 
-import ledger.controller.LedgerController;
-
 import java.io.Console;
 import java.math.BigInteger;
-
+/*
 public class ClientMain {
     public static void main(String[] args) {
         BigInteger address = new BigInteger(args[0]);
@@ -23,4 +21,4 @@ public class ClientMain {
         // this part is not very interesting and could be hardcoded (for now).
         // finish this up for the presentation so we can present the system nicely
     }
-}
+}*/

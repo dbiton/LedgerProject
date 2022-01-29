@@ -23,14 +23,14 @@ message Coins {
   uint64 coins = 1;
 }
 
-message Transfer {
+message rpcTransfer {
   uint128 address = 1;
   Coins coins = 2;
 }
 
 message TransferAndTransactionID{
   uint128 transaction_id = 1;
-  Transfer transfer = 2;
+  rpcTransfer transfer = 2;
 }
 
 message Max{
@@ -48,13 +48,13 @@ message AddressesAndAmount{
   uint64 amount = 3;
 }
 
-message UTxO {
+message rpcUTxO {
   uint128 transaction_id = 1;
   uint128 address = 2;
 }
 
-message Transaction {
+message rpcTransaction {
   uint128 id = 1;
-  repeated UTxO inputs = 2;
-  repeated Transfer outputs = 3;
+  repeated rpcUTxO inputs = 2;
+  repeated rpcTransfer outputs = 3;
 }

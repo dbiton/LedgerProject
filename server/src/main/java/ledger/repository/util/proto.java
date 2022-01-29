@@ -1,12 +1,10 @@
-package ledger.util;
+package ledger.repository.util;
 
 import cs236351.ledger.AddressAndMax;
-import cs236351.ledger.Transfer;
-import cs236351.ledger.uint128;
+import cs236351.ledger.*;
 import ledger.repository.model.Transaction;
 import ledger.repository.model.UTxO;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,31 +34,31 @@ public class proto {
                 .build();
     }
 
-    public static cs236351.ledger.TransferAndTransactionID toMessage(ledger.repository.model.Transfer transfer,
+    public static TransferAndTransactionID toMessage(ledger.repository.model.Transfer transfer,
                                                                      BigInteger transaction_id){
-        return cs236351.ledger.TransferAndTransactionID.newBuilder()
+        return TransferAndTransactionID.newBuilder()
                 .setTransactionId(toUint128(transaction_id))
                 .setTransfer(toMessage(transfer))
                 .build();
     }
 
-    public static cs236351.ledger.Transfer toMessage(ledger.repository.model.Transfer transfer){
-        return cs236351.ledger.Transfer.newBuilder()
+    public static rpcTransfer toMessage(ledger.repository.model.Transfer transfer){
+        return rpcTransfer.newBuilder()
                 .setAddress(toUint128(transfer.getAddress()))
                 .setCoins(cs236351.ledger.Coins.newBuilder().setCoins(transfer.getCoins()))
                 .build();
     }
 
-    public static cs236351.ledger.UTxO toMessage(ledger.repository.model.UTxO utxo){
-        return cs236351.ledger.UTxO.newBuilder()
+    public static rpcUTxO toMessage(ledger.repository.model.UTxO utxo){
+        return rpcUTxO.newBuilder()
                 .setAddress(toUint128(utxo.getAddress()))
                 .setTransactionId(toUint128(utxo.getTransaction_id()))
                 .build();
     }
 
-    public static cs236351.ledger.Transaction toMessage(ledger.repository.model.Transaction transaction){
+    public static rpcTransaction toMessage(ledger.repository.model.Transaction transaction){
         uint128 id = toUint128(transaction.getId());
-        cs236351.ledger.Transaction.Builder builder = cs236351.ledger.Transaction.newBuilder().setId(id);
+        rpcTransaction.Builder builder = rpcTransaction.newBuilder().setId(id);
         int n = 0;
         for (ledger.repository.model.UTxO u : transaction.getInputs()){
             builder.addInputs(n, toMessage(u));
@@ -74,26 +72,26 @@ public class proto {
         return builder.build();
     }
 
-    public static ledger.repository.model.Transfer fromMessage(cs236351.ledger.Transfer msg){
+    public static ledger.repository.model.Transfer fromMessage(rpcTransfer msg){
         BigInteger address = toBigInteger(msg.getAddress());
         long coins = msg.getCoins().getCoins();
         return new ledger.repository.model.Transfer(address, coins);
     }
 
-    public static ledger.repository.model.UTxO fromMessage(cs236351.ledger.UTxO msg){
+    public static ledger.repository.model.UTxO fromMessage(rpcUTxO msg){
         BigInteger transaction_id = toBigInteger(msg.getTransactionId());
         BigInteger address = toBigInteger(msg.getAddress());
         return new ledger.repository.model.UTxO(transaction_id, address);
     }
 
-    public static Transaction fromMessage(cs236351.ledger.Transaction msg){
+    public static Transaction fromMessage(rpcTransaction msg){
         BigInteger id = toBigInteger(msg.getId());
         List<UTxO> inputs = new ArrayList<>();
         List<ledger.repository.model.Transfer> outputs = new ArrayList<>();
-        for (cs236351.ledger.UTxO u : msg.getInputsList()){
+        for (rpcUTxO u : msg.getInputsList()){
             inputs.add(fromMessage(u));
         }
-        for (Transfer t : msg.getOutputsList()){
+        for (rpcTransfer t : msg.getOutputsList()){
             outputs.add(fromMessage(t));
         }
         return new Transaction(id, inputs, outputs);

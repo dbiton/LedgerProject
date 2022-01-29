@@ -12,26 +12,26 @@ service LedgerService {
   // client to server communication
   // write
   rpc SendCoins(AddressesAndAmount) returns (Res) {}
-  rpc SubmitTransaction(Transaction) returns (Res) {}
-  rpc SubmitTransactions(stream Transaction) returns (Res) {}
+  rpc SubmitTransaction(rpcTransaction) returns (Res) {}
+  rpc SubmitTransactions(stream rpcTransaction) returns (Res) {}
   // read
-  rpc GetUTxOs(uint128) returns (stream UTxO) {}
-  rpc GetTransactions(AddressAndMax) returns (stream Transaction) {}
-  rpc GetAllTransactions(Max) returns (stream Transaction) {}
+  rpc GetUTxOs(uint128) returns (stream rpcUTxO) {}
+  rpc GetTransactions(AddressAndMax) returns (stream rpcTransaction) {}
+  rpc GetAllTransactions(Max) returns (stream rpcTransaction) {}
 
   // server to server communication
   // write
   rpc SubmitTransfer(TransferAndTransactionID) returns (google.protobuf.Empty) {}
   rpc SubmitTransferInternal(TransferAndTransactionID) returns (google.protobuf.Empty) {}
   // read
-  rpc GetAllShardTransactions(Max) returns (stream Transaction) {}
+  rpc GetAllShardTransactions(Max) returns (stream rpcTransaction) {}
 
   // write
   rpc SendCoinsInternal(AddressesAndAmount) returns (Res) {}
-  rpc SubmitTransactionInternal(Transaction) returns (Res) {}
-  rpc SubmitTransactionsInternal(stream Transaction) returns (Res) {}
+  rpc SubmitTransactionInternal(rpcTransaction) returns (Res) {}
+  rpc SubmitTransactionsInternal(stream rpcTransaction) returns (Res) {}
   // read
-  rpc GetUTxOsInternal(uint128) returns (stream UTxO) {}
-  rpc GetTransactionsInternal(AddressAndMax) returns (stream Transaction) {}
-  rpc GetAllTransactionsInternal(Max) returns (stream Transaction) {}
+  rpc GetUTxOsInternal(uint128) returns (stream rpcUTxO) {}
+  rpc GetTransactionsInternal(AddressAndMax) returns (stream rpcTransaction) {}
+  rpc GetAllTransactionsInternal(Max) returns (stream rpcTransaction) {}
 }

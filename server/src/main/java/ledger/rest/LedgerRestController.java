@@ -2,6 +2,7 @@ package ledger.rest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javassist.bytecode.stackmap.TypeData;
+import ledger.service.LedgerServer;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,61 +15,67 @@ import ledger.repository.model.Transaction;
 import ledger.repository.model.UTxO;
 import ledger.repository.model.Transfer;
 
-import java.io.IOException;
+import javax.persistence.criteria.CriteriaBuilder;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-/**
- * Controller for REST API endpoints
- */
+
 @RestController
 @EntityScan("model")
 public class LedgerRestController {
+    LedgerServer ledger;
+
     LedgerRestController(){
     }
 
     private static final String limit_null = "-1";
 
-    public void throwErrors(RestResponse resp) {
-        if (resp.status != HttpStatus.OK && resp.status != HttpStatus.CREATED){
-            throw new RuntimeException("HTTP ERROR:" + resp.status + ":" + resp.message);
+    @PostMapping("/setup/{host}/{port}/{num_shards}/{zookeeper_host}")
+    public @ResponseBody boolean setup(@PathVariable String host, @PathVariable String port,
+                                       @PathVariable String num_shards, @PathVariable String zookeeper_host) {
+        try {
+            this.ledger = new LedgerServer(host, Integer.parseInt(port), Integer.parseInt(num_shards), zookeeper_host);
+            return true;
+        }
+        catch (Exception e){
+            System.out.println("On LedgerRestController setup:" + e);
+            return false;
         }
     }
 
     @PostMapping("/transactions")
-    public @ResponseBody List<Transaction> submitTransactions(@RequestBody List<TransactionRequest> transactions) {
+    public @ResponseBody boolean submitTransactions(@RequestBody List<Transaction> transactions) {
         System.out.println("submitTransactions");
         if (transactions.size() > 1) {
+            return ledger.submitTransaction(transactions.get(0));
         } else {
+            return ledger.submitTransactions(transactions);
         }
-        return new ArrayList<>();
     }
 
     @PostMapping("/send_coins")
-    public @ResponseBody Transaction sendCoins(@RequestBody SendCoinsRequest body) {
+    public @ResponseBody boolean sendCoins(@RequestBody SendCoinsRequest body) {
         System.out.println("sendCoins");
-        return new Transaction(new BigInteger("0"), new ArrayList<>(), new ArrayList<>());
+        return ledger.sendCoins(new BigInteger(body.from_address), new BigInteger(body.to_address), body.coins);
     }
 
     @GetMapping("/transactions/{address}")
     public @ResponseBody List<Transaction> getTransactions(@PathVariable String address,
                                                                      @RequestParam(required = false, defaultValue = limit_null) int limit) {
         System.out.println("getTransactions");
-        return new ArrayList<>();
+        return ledger.getTransactions(new BigInteger(address), limit);
     }
 
     @GetMapping("/transactions")
     public @ResponseBody List<Transaction> getAllTransactions(@RequestParam(required = false, defaultValue = limit_null) int limit) {
         System.out.println("getAllTransactions");
-        return new ArrayList<>();
+        return ledger.getAllTransactions(limit);
     }
 
     @GetMapping("/utxos/{address}")
     public @ResponseBody List<UTxO> getUTxOs(@PathVariable String address) {
         System.out.println("getUTxOs");
-        return new ArrayList<>();
+        return ledger.getUTxOs(new BigInteger(address));
     }
 }

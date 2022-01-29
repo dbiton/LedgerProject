@@ -1,6 +1,5 @@
 package ledger;
 
-import ledger.controller.LedgerController;
 import ledger.repository.model.Transaction;
 import ledger.repository.model.Transfer;
 import ledger.repository.model.UTxO;
@@ -12,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/*
 public class Test {
     final static List<Integer> zookeeper_ports = Arrays.asList(2181, 2182, 2183);
     final static List<Integer> server_ports = Arrays.asList(3453, 12345, 2343);
@@ -81,4 +81,4 @@ public class Test {
         System.out.println(Arrays.toString(us.toArray()));
         System.out.println(Arrays.toString(ts.toArray()));
     }
-}
+}*/

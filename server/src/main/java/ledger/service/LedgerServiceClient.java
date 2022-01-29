@@ -1,9 +1,6 @@
 package ledger.service;
 
 import cs236351.ledger.LedgerServiceGrpc;
-import cs236351.ledger.Transfer;
-import io.grpc.Channel;
-import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 

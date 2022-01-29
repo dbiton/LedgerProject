@@ -5,7 +5,7 @@ import ledger.service.LedgerServiceClient;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/*
 public class ServerMain {
     public static void main(String[] args) {
         String[] args1 = {"0", "127.0.0.1:66667", "6666", "4", "127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183", "1", "127.0.0.1:6668", "6666"};
@@ -30,4 +30,4 @@ public class ServerMain {
             System.out.println("Error while creating server: " + e);
         }
     }
-}
+}*/
